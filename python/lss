@@ -1,0 +1,53 @@
+#! /usr/local/bin/python
+
+"""This is the lss module.
+
+This module outputs a file path's entities into a human readable format.
+"""
+__version__ = '0.1'
+__author__ = 'Alex Boyle'
+
+from os import listdir
+from os import path
+from os import curdir
+import re
+import sys
+
+def lss(path):
+    """Output human-readable list of files from path.
+    :param path: a valid folder path
+    """
+    regex = re.compile("\d+")
+    collection = {}
+
+    for filepath in listdir(path):
+        subbedstring = regex.sub("#", filepath)
+        
+        if collection.get(subbedstring, None) is None:
+            collection[subbedstring] = []
+        subbedstringdict = collection[subbedstring]
+
+        numbers = regex.findall(filepath)
+        for pos, number in enumerate(numbers):
+            if subbedstringdict.get(pos, None):
+                subbedstringdict[pos] = {}
+            subbedstringdict[pos][number] = int(number)
+
+    # for row in collection:
+    #     print '%s\t%s\t\t' 
+
+
+
+if __name__ in "__main__":
+
+    #We are dealing with just one optional argument. No need 
+    #to bring in another python library for arg parsing
+    if len(sys.argv) > 1:
+        p =  path.abspath(sys.argv[1])
+        if not path.exists(p):
+            print "ERROR: cannot expand path '%s'. Please verify the path exists." %p
+            sys.exit(1)
+    else:
+        p = curdir
+
+    lss(p)
