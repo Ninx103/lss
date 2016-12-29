@@ -1,4 +1,4 @@
-#! /usr/local/bin/python
+#! /usr/bin/python
 
 """This is the lss module.
 
@@ -27,14 +27,19 @@ def lss(path):
             collection[subbedstring] = []
         subbedstringdict = collection[subbedstring]
 
-        numbers = regex.findall(filepath)
-        for pos, number in enumerate(numbers):
-            if subbedstringdict.get(pos, None):
-                subbedstringdict[pos] = {}
-            subbedstringdict[pos][number] = int(number)
+        # numbers = regex.findall(filepath)
+        for number in regex.finditer(filepath):
+            print "%s: [%s] %s" %(filepath, number.start(), number.group())
+            # filepath
+            # if subbedstringdict.get(pos, None):
+            #     subbedstringdict[pos] = {}
+            # subbedstringdict[pos][number] = int(number)
 
     # for row in collection:
-    #     print '%s\t%s\t\t' 
+    #   count = count.ljust(4)
+    #   filepath = filepath.ljust(25)
+    #   padding = "%%%dd" %(str(padding).zfill(2))
+    #   print '%s%s' %()
 
 
 
