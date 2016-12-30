@@ -10,6 +10,8 @@ __author__ = 'Alex Boyle'
 from os import listdir
 from os import path
 from os import curdir
+from operator import itemgetter
+from itertools import groupby
 import re
 import sys
 
@@ -21,26 +23,85 @@ def lss(path):
     collection = {}
 
     for filepath in listdir(path):
-        subbedstring = regex.sub("#", filepath)
-        
-        if collection.get(subbedstring, None) is None:
-            collection[subbedstring] = []
-        subbedstringdict = collection[subbedstring]
+        poundstring = regex.sub("#", filepath)
 
-        # numbers = regex.findall(filepath)
+        version = {}
         for number in regex.finditer(filepath):
-            print "%s: [%s] %s" %(filepath, number.start(), number.group())
-            # filepath
-            # if subbedstringdict.get(pos, None):
-            #     subbedstringdict[pos] = {}
-            # subbedstringdict[pos][number] = int(number)
+            version[number.start()] = (number.group(), int(number.group()))
+            
+        if collection.get(poundstring, None) is None:
+            collection[poundstring] = {'total': 1,
+                                       'groups': [{'base': version,'count': 1, 'poscount': {}}], 
+                                       'files': []}
+        else:
+            grouplist = collection[poundstring]
+            
+            found = False
+            for group in grouplist['groups']:
+                increments = [k for k, x in group['base'].items() if x != version.get(k, None)] #totes pythonic
+                if len(increments) == 1:
+                    pos = increments[0]
+                    if len(version[pos][0]) == len(group['base'][pos][0]): #checking padding consistency
+                        group['count'] += 1
+                        group['poscount'][pos] = group['poscount'].get(pos, 1) + 1
+                        found = True
+            if found:
+                grouplist['files'].append(version)
+            if not found:
+                count = 1
+                poscount = {}
+                for f in grouplist['files']:
+                    if f.keys() == version.keys():
+                        increments = [k for k, x in f.items() if x != version.get(k, None)]
+                        if len(increments) == 1:
+                            pos = increments[0]
+                            if len(version[pos][0]) == len(f[pos][0]): #checking padding consistency
+                                poscount[pos] = poscount.get(pos, 1) + 1
+                                count += 1
 
-    # for row in collection:
-    #   count = count.ljust(4)
-    #   filepath = filepath.ljust(25)
-    #   padding = "%%%dd" %(str(padding).zfill(2))
-    #   print '%s%s' %()
+                grouplist['groups'].append({'base':version, 'count': count, 'poscount':poscount})
 
+
+    for filename, row in collection.items():
+        for group in sorted(row['groups'], key=lambda x:-x['count']):
+            finalname = filename
+            base = group['base']
+            framerange = ""
+            padding = ""
+            finalfiles = []
+            for k,v in base.items():
+                finalname = finalname[:k] + v[0] + finalname[k+1:] 
+            if group['poscount']:
+                inc = sorted(group['poscount'].items(), key=lambda (x,y):-y) 
+                # I only want the highest value, 
+                # TODO: if there is a tie, pick left-most position
+                # There can be a scenario where more than 2 sets of numbers can be present.
+                # I wanted to accomodate that scenario here by removing the "incremented" position from the files
+                incpos = inc[0][0]
+                finalfiles = [base[incpos][1]]
+                tempbase = {(k,v) for k,v in base.items() if k != incpos}
+                for f in row['files'][:]:
+                    if tempbase == {(k,v) for k,v in f.items() if k != incpos}:
+                        row['files'].remove(f)                      #pop out of the list
+                        finalfiles.append(f[incpos][1])                #add it to the final files list
+
+                if len(finalfiles) > 1:
+                    padded = len(base[incpos][0])
+                    padding = "%%d"
+                    if padded > 1:
+                        padding = "%%%sd" %(str(padded).zfill(2))
+                    finalname = finalname[:incpos] + padding + finalname[incpos+padded:]
+
+                for k, g in groupby(enumerate(sorted(finalfiles)), lambda (i,x):i-x):
+                    sequence = map(itemgetter(1), g)
+                    tempstr = str(sequence[0])
+                    if len(sequence) > 1:
+                        tempstr += "-%s" %sequence[-1]
+                    framerange += " " + tempstr
+
+            count = str(len(finalfiles)).ljust(4) if finalfiles else "1   "
+            print '%s%s%s' %(count, finalname.ljust(25), framerange)
+            
 
 
 if __name__ in "__main__":
@@ -54,5 +115,7 @@ if __name__ in "__main__":
             sys.exit(1)
     else:
         p = curdir
+
+    p = r"/Users/Alex/gitrepos/lss/testdir/"
 
     lss(p)
