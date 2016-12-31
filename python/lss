@@ -3,6 +3,67 @@
 """This is the lss module.
 
 This module outputs a file path's entities into a human readable format.
+
+I started with the idea that I wanted to generate a mapping sequence of 
+file base names with numbers replaced with a single '#' octothorpe character.
+
+i.e. file01_0001.rgb -> file#_#.rgb
+
+So I loop through the entire list of files, generating the base name for lookup.
+All the numbers that are stripped from the name get placed into a dictionary with
+the position of the number in the string as the key, and a tuple of the str/int 
+values of the number in the string. I do this because I will need to preserve the
+padding along with storing the int value of the number for sequence grouping later.
+
+VERSION:
+file01_0001.rgb -> {4:('01', 1), 7:('0001', 1)}
+
+This next part is fun.
+
+Each base filename starts to generate a list of "base versions". The idea here
+is to figure out unique/non-sequencing files while looping through all the files.
+As a version is created, it compares it to the list of base versions to 
+determine if the numbers are incremented or a completely new version. 
+
+If any of the versions items are similar to any base version, I determine 
+that it *could* be an increment, add 1 to the base version count along with 
+adding 1 to which position in the filename that incremented in the poscount,
+and push to the files list.
+
+If NONE of the version items are similar, its a potential new version.
+I register the new version as a base version. I then loop through all 
+the files already pushed into the 'files' list. The reason being that
+I could have already pushed through files that belong to a new base as it
+increments as well. I did it this way to reduce the number of files to loop
+back over as new potential bases are registered.
+
+file01_0001.rgb
+file01_0002.rgb
+Here's an example of a mapped filename with two files:
+{'file#_#.rgb': {'groups': [{'base': {4:('01', 1), 7:('0001', 1)}, 
+                             'count': 2,
+                             'poscount': {7:2}}]
+                 'files': [{4:('01', 1), 7:('0002', 2)}]
+
+The last bit of logic comes in at the print for loop. I determine that files
+with the largest file increment counts should go first since they are the 
+most likely to be the correct file sequence in a directory. I loop over the base 
+filenames and sort the groups by the highest count. Then I sort each group by
+highest poscount (position count), and again by the right-most position count as the 
+"increment". I loop through the file names, collecting files that increment at the
+highest poscount position, add the base version, and print the formatted output.
+
+My main goal here was to not build an algorithm that has O^n notation. I wanted
+to loop through as little much as possible with most cases of directories. 
+Because the challenge indicated that the increments could be in any number position,
+this can still cause the algorithm to have poor performance based on the contents
+of the directory. One example I can see performance getting ugly with is a directory that
+contains many versions of files with the same sequence counts. Especially if the sequence
+count and the version counts are the same. 
+
+I suppose this is why we use file naming standards.
+
+i.e. file001_[001-100].rgb, file002_[001-100].rgb, file003_[001-100].rgb, ... file100_[001-100].rgb
 """
 __version__ = '0.1'
 __author__ = 'Alex Boyle'
@@ -30,18 +91,17 @@ def lss(path):
             version[number.start()] = (number.group(), int(number.group()))
             
         if collection.get(poundstring, None) is None:
-            collection[poundstring] = {'total': 1,
-                                       'groups': [{'base': version,'count': 1, 'poscount': {}}], 
+            collection[poundstring] = {'groups': [{'base': version,'count': 1, 'poscount': {}}], 
                                        'files': []}
         else:
             grouplist = collection[poundstring]
             
             found = False
             for group in grouplist['groups']:
-                increments = [k for k, x in group['base'].items() if x != version.get(k, None)] #totes pythonic
+                increments = [k for k, x in group['base'].items() if x != version.get(k, None)]
                 if len(increments) == 1:
                     pos = increments[0]
-                    if len(version[pos][0]) == len(group['base'][pos][0]): #checking padding consistency
+                    if len(version[pos][0]) == len(group['base'][pos][0]):
                         group['count'] += 1
                         group['poscount'][pos] = group['poscount'].get(pos, 1) + 1
                         found = True
@@ -55,12 +115,11 @@ def lss(path):
                         increments = [k for k, x in f.items() if x != version.get(k, None)]
                         if len(increments) == 1:
                             pos = increments[0]
-                            if len(version[pos][0]) == len(f[pos][0]): #checking padding consistency
+                            if len(version[pos][0]) == len(f[pos][0]):
                                 poscount[pos] = poscount.get(pos, 1) + 1
                                 count += 1
 
                 grouplist['groups'].append({'base':version, 'count': count, 'poscount':poscount})
-
 
     for filename, row in collection.items():
         for group in sorted(row['groups'], key=lambda x:-x['count']):
@@ -72,22 +131,18 @@ def lss(path):
             for k,v in base.items():
                 finalname = finalname[:k] + v[0] + finalname[k+1:] 
             if group['poscount']:
-                inc = sorted(group['poscount'].items(), key=lambda (x,y):-y) 
-                # I only want the highest value, 
-                # TODO: if there is a tie, pick left-most position
-                # There can be a scenario where more than 2 sets of numbers can be present.
-                # I wanted to accomodate that scenario here by removing the "incremented" position from the files
+                inc = sorted(group['poscount'].items(), key=lambda (x,y):(-y, -x)) 
                 incpos = inc[0][0]
                 finalfiles = [base[incpos][1]]
                 tempbase = {(k,v) for k,v in base.items() if k != incpos}
                 for f in row['files'][:]:
                     if tempbase == {(k,v) for k,v in f.items() if k != incpos}:
-                        row['files'].remove(f)                      #pop out of the list
-                        finalfiles.append(f[incpos][1])                #add it to the final files list
+                        row['files'].remove(f)
+                        finalfiles.append(f[incpos][1])
 
                 if len(finalfiles) > 1:
                     padded = len(base[incpos][0])
-                    padding = "%%d"
+                    padding = "%d"
                     if padded > 1:
                         padding = "%%%sd" %(str(padded).zfill(2))
                     finalname = finalname[:incpos] + padding + finalname[incpos+padded:]
@@ -101,13 +156,8 @@ def lss(path):
 
             count = str(len(finalfiles)).ljust(4) if finalfiles else "1   "
             print '%s%s%s' %(count, finalname.ljust(25), framerange)
-            
-
 
 if __name__ in "__main__":
-
-    #We are dealing with just one optional argument. No need 
-    #to bring in another python library for arg parsing
     if len(sys.argv) > 1:
         p =  path.abspath(sys.argv[1])
         if not path.exists(p):
@@ -115,7 +165,5 @@ if __name__ in "__main__":
             sys.exit(1)
     else:
         p = curdir
-
-    p = r"/Users/Alex/gitrepos/lss/testdir/"
 
     lss(p)
