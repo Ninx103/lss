@@ -128,8 +128,8 @@ def lss(path):
             framerange = ""
             padding = ""
             finalfiles = []
-            for k,v in base.items():
-                finalname = finalname[:k] + v[0] + finalname[k+1:] 
+            for k,v in sorted(base.items(), key=lambda (x, y):x):
+                finalname = finalname[:k] + v[0] + finalname[k+1:]
             if group['poscount']:
                 inc = sorted(group['poscount'].items(), key=lambda (x,y):(-y, -x)) 
                 incpos = inc[0][0]
