@@ -81,46 +81,60 @@ def lss(path):
     :param path: a valid folder path
     """
     regex = re.compile("\d+")
-    collection = {}
+    collection = {}     #file base name groupings ({'file#_#.rgb': {}})
 
     for filepath in listdir(path):
-        poundstring = regex.sub("#", filepath)
+        poundstring = filepath
 
         version = {}
         for number in regex.finditer(filepath):
-            version[number.start()] = (number.group(), int(number.group()))
-            
+            group = number.group()
+            size = len(group)
+            start = number.start()
+            poundstring = poundstring[:start] + "#"*size + poundstring[start+size:]
+            version[number.start()] = (group, int(group))
+
         if collection.get(poundstring, None) is None:
+            #I am registering a new file base name and its numbers as a base version number
+            #I also create a list of 'files' for the purpose of collecting the files that will match against the bases later on.
             collection[poundstring] = {'groups': [{'base': version,'count': 1, 'poscount': {}}], 
                                        'files': []}
         else:
             grouplist = collection[poundstring]
             
-            found = False
+            #I loop through all the base version numbers to detect if a file can increment on it
+            # I detect an increment if only ONE of the numbers is different than the rest. 
+            # This is to accomodate files with 1+ sets of numbers.
+            found = False 
             for group in grouplist['groups']:
+                #use a generator here to get a list of the keys (string positions) that are different by comparing the base tuple to the incoming version tuple
                 increments = [k for k, x in group['base'].items() if x != version.get(k, None)]
                 if len(increments) == 1:
+                    #If just one position is different, its an increment candidate
+                    #I increment the position counter along with the total count
                     pos = increments[0]
-                    if len(version[pos][0]) == len(group['base'][pos][0]):
-                        group['count'] += 1
-                        group['poscount'][pos] = group['poscount'].get(pos, 1) + 1
-                        found = True
+                    group['count'] += 1
+                    group['poscount'][pos] = group['poscount'].get(pos, 1) + 1
+                    found = True
             if found:
+                # if at least one base incremented, then I just append the file to the list of files within the base name
                 grouplist['files'].append(version)
             if not found:
-                count = 1
-                poscount = {}
+                # if there was not a match found, then the file is a new base and needs to be added to the list of bases under the base filename
+                # the new base version also needs to check the existing list of files within its base for potential increment catches as well.
+                base = {'base':version, 'count': 1, 'poscount':{}}
                 for f in grouplist['files']:
-                    if f.keys() == version.keys():
-                        increments = [k for k, x in f.items() if x != version.get(k, None)]
-                        if len(increments) == 1:
-                            pos = increments[0]
-                            if len(version[pos][0]) == len(f[pos][0]):
-                                poscount[pos] = poscount.get(pos, 1) + 1
-                                count += 1
+                    increments = [k for k, x in f.items() if x != version.get(k, None)]
+                    if len(increments) == 1:
+                        pos = increments[0]
+                        base['count'] += 1
+                        base['poscount'][pos] = base['poscount'].get(pos, 1) + 1
+                grouplist['groups'].append(base)
 
-                grouplist['groups'].append({'base':version, 'count': count, 'poscount':poscount})
-
+    # Once I looped through all the files and have sorted them, this is the logic to build the final ouput rows.
+    # each row is the key base file name in the collection. I take the key (i.e. file##_####.rgb) and begin to determine
+    # which count is the highest
+    print collection
     for filename, row in collection.items():
         for group in sorted(row['groups'], key=lambda x:-x['count']):
             finalname = filename
@@ -129,7 +143,7 @@ def lss(path):
             padding = ""
             finalfiles = []
             for k,v in sorted(base.items(), key=lambda (x, y):x):
-                finalname = finalname[:k] + v[0] + finalname[k+1:]
+                finalname = finalname[:k] + v[0] + finalname[k+len(v[0]):]
             if group['poscount']:
                 inc = sorted(group['poscount'].items(), key=lambda (x,y):(-y, -x)) 
                 incpos = inc[0][0]
@@ -147,12 +161,12 @@ def lss(path):
                         padding = "%%%sd" %(str(padded).zfill(2))
                     finalname = finalname[:incpos] + padding + finalname[incpos+padded:]
 
-                for k, g in groupby(enumerate(sorted(finalfiles)), lambda (i,x):i-x):
-                    sequence = map(itemgetter(1), g)
-                    tempstr = str(sequence[0])
-                    if len(sequence) > 1:
-                        tempstr += "-%s" %sequence[-1]
-                    framerange += " " + tempstr
+                    for k, g in groupby(enumerate(sorted(finalfiles)), lambda (i,x):i-x):
+                        sequence = map(itemgetter(1), g)
+                        tempstr = str(sequence[0])
+                        if len(sequence) > 1:
+                            tempstr += "-%s" %sequence[-1]
+                        framerange += " " + tempstr
 
             count = str(len(finalfiles)).ljust(4) if finalfiles else "1   "
             print '%s%s%s' %(count, finalname.ljust(25), framerange)
