@@ -114,11 +114,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Filenumbers.cpp" />
-    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="lss.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Filenumbers.h" />
+    <ClInclude Include="lss.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

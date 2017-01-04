@@ -7,9 +7,9 @@ This module outputs a file path's entities into a human readable format.
 I started with the idea that I wanted to generate a mapping sequence of 
 file base names with numbers replaced with a single '#' octothorpe character.
 
-i.e. file01_0001.rgb -> file#_#.rgb
+i.e. file01_0001.rgb -> file##_####.rgb
 
-So I loop through the entire list of files, generating the base name for lookup.
+So as I loop through the entire list of files, I'm generating the base name for later lookup.
 All the numbers that are stripped from the name get placed into a dictionary with
 the position of the number in the string as the key, and a tuple of the str/int 
 values of the number in the string. I do this because I will need to preserve the
@@ -20,22 +20,18 @@ file01_0001.rgb -> {4:('01', 1), 7:('0001', 1)}
 
 This next part is fun.
 
-Each base filename starts to generate a list of "base versions". The idea here
-is to figure out unique/non-sequencing files while looping through all the files.
-As a version is created, it compares it to the list of base versions to 
-determine if the numbers are incremented or a completely new version. 
+Each base filename starts to generate a list of bases. The idea here
+is to use these bases as unique/non-sequencing files while looping through all
+the other files. As a new version is created, it compares it to the list of base 
+versions to determine if the numbers are incremented or a completely new version. 
 
 If any of the versions items are similar to any base version, I determine 
-that it *could* be an increment, add 1 to the base version count along with 
-adding 1 to which position in the filename that incremented in the poscount,
-and push to the files list.
+that it is an increment; I add 1 to the base version count, 
+I add 1 to the position that incremented, and I push it to the files list.
 
-If NONE of the version items are similar, its a potential new version.
-I register the new version as a base version. I then loop through all 
-the files already pushed into the 'files' list. The reason being that
-I could have already pushed through files that belong to a new base as it
-increments as well. I did it this way to reduce the number of files to loop
-back over as new potential bases are registered.
+If NONE of the bases match the version, it is registered as a new base.
+Then I loop through all the files already pushed into the 'files' list to 
+look for files I could have already pushed through that belong to the new base.
 
 file01_0001.rgb
 file01_0002.rgb
@@ -47,19 +43,20 @@ Here's an example of a mapped filename with two files:
 
 The last bit of logic comes in at the print for loop. I determine that files
 with the largest file increment counts should go first since they are the 
-most likely to be the correct file sequence in a directory. I loop over the base 
-filenames and sort the groups by the highest count. Then I sort each group by
-highest poscount (position count), and again by the right-most position count as the 
-"increment". I loop through the file names, collecting files that increment at the
+highest likely to be the correct file sequence in the directory. 
+
+I loop over the bases, sorted by the highest count. 
+Then I sort each string position within the base by its highest position count, 
+(and again by the right-most position as a tie-breaker). 
+I loop through the file names, collecting files that increment at the
 highest poscount position, add the base version, and print the formatted output.
 
-My main goal here was to not build an algorithm that has O^n notation. I wanted
-to loop through as little much as possible with most cases of directories. 
+My main goal here was to not build an algorithm that had O(n^2) notation. I also didnt want
+to ping the filesystem numerous amounts of time as well to find best-guesses. I wanted
+to loop through as little much as possible with most cases of directories.
 Because the challenge indicated that the increments could be in any number position,
 this can still cause the algorithm to have poor performance based on the contents
-of the directory. One example I can see performance getting ugly with is a directory that
-contains many versions of files with the same sequence counts. Especially if the sequence
-count and the version counts are the same. 
+of the directory.
 
 I suppose this is why we use file naming standards.
 
