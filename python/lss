@@ -80,27 +80,24 @@ def lss(path):
     """Output human-readable list of files from path.
     :param path: a valid folder path
     """
+    singleregex = re.compile("\d")
     regex = re.compile("\d+")
-    collection = {}     #file base name groupings ({'file#_#.rgb': {}})
+    filebasedict = {}     #file base name groupings ({'file##_####.rgb': {[],[]}})
 
     for filepath in listdir(path):
-        poundstring = filepath
+        poundstring = singleregex.sub("#", filepath)
 
         version = {}
         for number in regex.finditer(filepath):
-            group = number.group()
-            size = len(group)
-            start = number.start()
-            poundstring = poundstring[:start] + "#"*size + poundstring[start+size:]
-            version[number.start()] = (group, int(group))
+            version[number.start()] = (number.group(), int(number.group()))
 
-        if collection.get(poundstring, None) is None:
+        if filebasedict.get(poundstring, None) is None:
             #I am registering a new file base name and its numbers as a base version number
             #I also create a list of 'files' for the purpose of collecting the files that will match against the bases later on.
-            collection[poundstring] = {'groups': [{'base': version,'count': 1, 'poscount': {}}], 
+            filebasedict[poundstring] = {'groups': [{'base': version,'count': 1, 'poscount': {}}], 
                                        'files': []}
         else:
-            grouplist = collection[poundstring]
+            grouplist = filebasedict[poundstring]
             
             #I loop through all the base version numbers to detect if a file can increment on it
             # I detect an increment if only ONE of the numbers is different than the rest. 
@@ -132,35 +129,46 @@ def lss(path):
                 grouplist['groups'].append(base)
 
     # Once I looped through all the files and have sorted them, this is the logic to build the final ouput rows.
-    # each row is the key base file name in the collection. I take the key (i.e. file##_####.rgb) and begin to determine
-    # which count is the highest
-    print collection
-    for filename, row in collection.items():
+    # each row is the key base file name in the filebasedict. I take the key (i.e. file##_####.rgb) and begin to determine
+    # which base count is the highest. This was my logic for determining the best sequence candidates and plucking the 
+    # files out that match. 
+    for filename, row in filebasedict.items():
         for group in sorted(row['groups'], key=lambda x:-x['count']):
+            # Each base is going to be its own print row.
             finalname = filename
             base = group['base']
             framerange = ""
             padding = ""
             finalfiles = []
             for k,v in sorted(base.items(), key=lambda (x, y):x):
+                # This generates the finalname with the base file added back in
                 finalname = finalname[:k] + v[0] + finalname[k+len(v[0]):]
             if group['poscount']:
+                # Sorting by the highest count, then by the highest position (-y). This is used as the tie breaker 
+                # I am using the right-most number set position (-x) as the increment in the event of a tie.
                 inc = sorted(group['poscount'].items(), key=lambda (x,y):(-y, -x)) 
-                incpos = inc[0][0]
-                finalfiles = [base[incpos][1]]
-                tempbase = {(k,v) for k,v in base.items() if k != incpos}
+                incpos = inc[0][0] #store this since I'd like to avoid more lookups
+                finalfiles = [base[incpos][1]] #add the base to the final files - hey, the base file name is a file too.
+                tempbase = {(k,v) for k,v in base.items() if k != incpos} 
                 for f in row['files'][:]:
+                    # here is where I build the list of increment digits. If the base with the incremented (incpos) is removed,
+                    # and if the dictionaries match, I remove the file from the list of files (I can only count it once)
+                    # and then I add the int value of the tuple to the finalfiles list. This will be used to generate the str range
                     if tempbase == {(k,v) for k,v in f.items() if k != incpos}:
                         row['files'].remove(f)
                         finalfiles.append(f[incpos][1])
 
                 if len(finalfiles) > 1:
+                    # I run this if padding substitution needs to occur basded on the length othe finalfiles list.
                     padded = len(base[incpos][0])
                     padding = "%d"
                     if padded > 1:
                         padding = "%%%sd" %(str(padded).zfill(2))
+                    # I read about this being more efficient than using string methods sub/lsub
                     finalname = finalname[:incpos] + padding + finalname[incpos+padded:]
 
+                    # Found this general groupby/map expression. Takes a list of numbers to output lists of numbers that increment.
+                    # i.e. [1,2,3,4] [7,8,9,10] [12] -> 1-4 7-10 12
                     for k, g in groupby(enumerate(sorted(finalfiles)), lambda (i,x):i-x):
                         sequence = map(itemgetter(1), g)
                         tempstr = str(sequence[0])
