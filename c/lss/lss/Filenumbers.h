@@ -1,7 +1,8 @@
 #pragma once
-#include <string>
-#include <map>
 #include <list>
+#include <vector>
+#include <map>
+#include <string>
 
 using namespace std;
 
@@ -11,21 +12,21 @@ struct NumberSet {
 	int intnum;
 };
 
-class FileNumberSet {
-	int Count;
-	map<int, NumberSet> FileNumbersMap;
-public:
-	FileNumberSet() {};
+typedef map<const int, NumberSet> Numbers_t;
 
-	void insertNumberSet(int position, string strnum, int positioncount);
-	void insertNumberSet(int position, string strnum);
-	void insertNumberSet(int position, NumberSet set);
-	
+class BaseNumberSet {
+	int Count;
+	Numbers_t FileNumbersMap;
+
+public:
+	BaseNumberSet() {};
+	BaseNumberSet(Numbers_t & set);
+
 	int getCount() { return Count; }
 	string FileStr(string basename);
 	int getHighestPositionCount();
-	bool isIncrementOf(FileNumberSet set, int pos);
+	bool isIncrementOf(BaseNumberSet set, int pos);
 
-	bool IncrementBaseSet(FileNumberSet set);
+	bool IncrementBaseSet(const Numbers_t & set);
 	NumberSet operator[](int position);
 };

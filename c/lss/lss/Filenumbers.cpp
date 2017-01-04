@@ -1,36 +1,28 @@
 #include "Filenumbers.h"
 
-
-
-
-bool operator !=(NumberSet & lhs, NumberSet & rhs) {
+bool operator !=(const NumberSet & lhs, const NumberSet & rhs) {
 	if (lhs.strnum != rhs.strnum) {
 		return true;
 	}
 	return false;
 }
 
-void FileNumberSet::insertNumberSet(int position, string strnum, int positioncount)
-{
-	NumberSet set = { positioncount, strnum, stoi(strnum) };
-	insertNumberSet(position, set);
-}
-
-
-void FileNumberSet::insertNumberSet(int position, string strnum)
-{
-	NumberSet set = { 0 , strnum, stoi(strnum) };
-	insertNumberSet(position, set);
-}
-
-void FileNumberSet::insertNumberSet(int position, NumberSet set)
-{
-	if (FileNumbersMap.find(position) == FileNumbersMap.end() ){
-		FileNumbersMap.insert({ position, set });
+bool operator !=(const Numbers_t & lhs, const Numbers_t & rhs) {
+	for (auto i : lhs) {
+		if (lhs.find(i.first)->second != rhs.find(i.first)->second) {
+			return true;
+		}
 	}
+	return false;
 }
 
-string FileNumberSet::FileStr(string basename)
+BaseNumberSet::BaseNumberSet(Numbers_t & set) :
+Count(1)
+{
+	FileNumbersMap = set;
+}
+
+string BaseNumberSet::FileStr(string basename)
 {
 	string outputname = basename;
 	for (auto pos : FileNumbersMap)
@@ -41,7 +33,7 @@ string FileNumberSet::FileStr(string basename)
 	return outputname;
 }
 
-int FileNumberSet::getHighestPositionCount()
+int BaseNumberSet::getHighestPositionCount()
 {
 	int highestcount = 0;
 	int highestpos = 0;
@@ -57,7 +49,7 @@ int FileNumberSet::getHighestPositionCount()
 	return highestpos;
 }
 
-bool FileNumberSet::isIncrementOf(FileNumberSet set, int pos) {
+bool BaseNumberSet::isIncrementOf(BaseNumberSet set, int pos) {
 	for (auto i : FileNumbersMap) {
 		if (pos == i.first) continue;
 		if (i.second != set[i.first]) {
@@ -67,23 +59,23 @@ bool FileNumberSet::isIncrementOf(FileNumberSet set, int pos) {
 	return true;
 }
 
-bool FileNumberSet::IncrementBaseSet(FileNumberSet set) {
+bool BaseNumberSet::IncrementBaseSet(const Numbers_t & set) {
 
-	list<int> count;
-	for (auto pos : FileNumbersMap) {
-		if (pos.second != set[pos.first]) {
+	list<int> count = {};
+	for ( auto pos : FileNumbersMap) {
+		if (pos.second != set.find(pos.first)->second) {
 			count.push_front(pos.first);
 		}
 	}
 	if (count.size() == 1) {
-		Count++;
+		++Count;
 		FileNumbersMap[count.front()].positioncount++;
 		return true;
 	}
 	return false;
 }
 
-NumberSet FileNumberSet::operator[](int position)
+NumberSet BaseNumberSet::operator[](int position)
 {
 	return FileNumbersMap[position];
 }

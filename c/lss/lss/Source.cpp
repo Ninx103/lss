@@ -1,10 +1,6 @@
 
 #include <cstdio>
 #include <iostream>
-#include <list>
-#include <vector>
-#include <map>
-#include <string>
 #include <numeric>
 
 #ifndef BOOST_FILESYSTEM_NO_DEPRECATED
@@ -21,10 +17,9 @@ using boost::regex_replace;
 using boost::regex;
 using boost::sregex_iterator;
 
-typedef pair<list<FileNumberSet>, list<FileNumberSet>> filebaseset_t;
+typedef pair<list<BaseNumberSet>, list<Numbers_t>> filebaseset_t;
 
-
-string generateRangeStr( list<int> filelist )
+string generateRangeStr( list<int> & filelist )
 {
 	string range = "";
 	vector<int> diff, mylist;
@@ -41,12 +36,12 @@ string generateRangeStr( list<int> filelist )
 	{
 		range += to_string(mylist[*p]);
 		p = find_if(++p, idx.end(), sep);
-		range += "-" + to_string(mylist[*(p - 1)]);
+		range += "-" + to_string(mylist[*(p - 1)]) + " ";
 	}
 	return range;
 }
 
-bool compareCounts(FileNumberSet & lhs, FileNumberSet & rhs)
+bool compareCounts(BaseNumberSet & lhs, BaseNumberSet & rhs)
 {
 	return (lhs.getCount() > rhs.getCount());
 }
@@ -60,35 +55,35 @@ void lss( path & p )
 	for (directory_entry & filepath : directory_iterator(p)) {
 		string filename = filepath.path().filename().string();
 		string basename = regex_replace(filename, singlepattern, "#");
-		FileNumberSet filenumbers;
+		
+		Numbers_t filenumbers;
 
 		sregex_iterator iter(filename.begin(), filename.end(), multipattern);
 		sregex_iterator end;
 		for (; iter != end; ++iter) {
-			int pos = (*iter).position();
-			filenumbers.insertNumberSet(pos, iter->str());
+			const int pos = (*iter).position();
+			filenumbers[pos] = {0, iter->str(), stoi(iter->str())};
 		}
 
-		auto B = filebasemap.find(basename);
-		if (B == filebasemap.end()) {
-			list<FileNumberSet> basefilenumbers = { filenumbers };
-			filebaseset_t groups = { basefilenumbers , list<FileNumberSet>()};
+		if (filebasemap.find(basename) == filebasemap.end()) {
+			list<BaseNumberSet> basefilenumbers = { BaseNumberSet(filenumbers) };
+			filebaseset_t groups = { basefilenumbers , list<Numbers_t>()};
 			filebasemap.insert({ basename, groups });
 		}
 		else {
-			list<FileNumberSet> & basegroups = filebasemap[basename].first;
 			bool Found = false;
-			for (auto group : basegroups) {
-				Found = (group.IncrementBaseSet(filenumbers)) ? true : false;
+			for (auto & base : filebasemap[basename].first) {
+				Found = (base.IncrementBaseSet(filenumbers)) ? true : false;
 			}
 			if (Found) {
 				filebasemap[basename].second.push_back(filenumbers);
 			}
 			else {
+				BaseNumberSet B(filenumbers);
 				for (auto file : filebasemap[basename].second) {
-					filenumbers.IncrementBaseSet(file);
+					B.IncrementBaseSet(file);
 				}
-				filebasemap[basename].first.push_back(filenumbers);
+				filebasemap[basename].first.push_back(B);
 			}
 		}
 	}
@@ -120,7 +115,6 @@ void lss( path & p )
 
 			basename.insert(basename.size(), 25-basename.size(), ' ');
 			cout << filelist.size() << " " << basename << " " << sequencerange << endl;
-
 		}
 	}
 }
@@ -131,6 +125,7 @@ int main( int argc, char ** argv )
 	char * x = (argc < 2) ? "." : argv[1];
 	path p(x);
 
+	//path p("..\\..\\..\\testdir\\test4");
 	if (exists(p) && is_directory(p)) {
 		lss(p);
 	}
