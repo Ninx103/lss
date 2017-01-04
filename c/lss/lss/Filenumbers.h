@@ -1,43 +1,31 @@
 #pragma once
 #include <string>
+#include <map>
 #include <list>
 
 using namespace std;
-class Numberset {
-	struct set {
-		short position;
-		string strnum;
-		int intnum;
-	};
-	list<set>;
-public:
-	Numberset();
-	Numberset(unsigned short start, string strnum);
 
-	short getPosition() { return position; };
-	string getStrnum() { return strnum; };
-	int getIntnum() { return intnum; };
-
-	bool operator == (Numberset & right);
-	bool operator != (Numberset & right);
-	string str() { return to_string(position) + ": ( " + strnum + ", " + to_string(intnum) + ")"; }
+struct NumberSet {
+	int positioncount;
+	string strnum;
+	int intnum;
 };
 
-class BaseVersion {
-	int count;
-	list<Numberset> basefilenumbers;
+class FileNumberSet {
+	int Count;
+	map<int, NumberSet> FileNumbersMap;
 public:
-	BaseVersion() : count(0) {};
-	BaseVersion(list<Numberset> basefilenumbers);
-	BaseVersion(int count, list<Numberset> basefilenumbers);
-	
-	int getCount() { return count; };
-	list<Numberset> getBaseFileNumbers() { return basefilenumbers; };
-	string baseNumbersStr();
-	string str() { return to_string(count) + ": " + baseNumbersStr(); }
+	FileNumberSet() {};
 
-	bool operator == (BaseVersion & right);
-	bool operator == (list<Numberset> & right);
-	bool operator != (BaseVersion & right);
-	bool operator != (list<Numberset> & right);
+	void insertNumberSet(int position, string strnum, int positioncount);
+	void insertNumberSet(int position, string strnum);
+	void insertNumberSet(int position, NumberSet set);
+	
+	int getCount() { return Count; }
+	string FileStr(string basename);
+	int getHighestPositionCount();
+	bool isIncrementOf(FileNumberSet set, int pos);
+
+	bool IncrementBaseSet(FileNumberSet set);
+	NumberSet operator[](int position);
 };
